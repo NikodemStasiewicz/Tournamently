@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Format {
+  SINGLE_ELIMINATION
+  DOUBLE_ELIMINATION
+}
+
+enum BracketType {
+  winners
+  losers
+  grandFinal
+}
+
+model User {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  email     String    @unique
+  name      String?
+  username  String
+  password  String  
+  tournaments TournamentParticipant[]
+  matchesAsPlayer1 Match[] @relation("player1")
+  matchesAsPlayer2 Match[] @relation("player2")
+  matchesAsWinner  Match[] @relation("winner")
+
+  ownedTournaments Tournament[] @relation("TournamentOwner")
+}
+
+model Tournament {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  format           Format
+  participantLimit  Int
+  startDate        DateTime
+  endDate          DateTime
+  createdAt        DateTime  @default(now())
+  game             String
+  matches          Match[]   @relation("tournamentMatches")
+  participants     TournamentParticipant[]
+
+  ownerId          String    @db.ObjectId
+  owner            User      @relation("TournamentOwner", fields: [ownerId], references: [id])
+}
+
+model TournamentParticipant {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tournamentId String     @db.ObjectId
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String     @db.ObjectId
+  joinedAt     DateTime?  @default(now())
+
+  @@unique([tournamentId, userId])
+}
+
+model Match {
+  id                        String     @id @default(auto()) @map("_id") @db.ObjectId
+  tournament                Tournament @relation("tournamentMatches", fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId              String     @db.ObjectId
+  round                     Int
+  matchNumber               Int?
+  player1                   User?      @relation("player1", fields: [player1Id], references: [id])
+  player1Id                 String?    @db.ObjectId
+  player2                   User?      @relation("player2", fields: [player2Id], references: [id])
+  player2Id                 String?    @db.ObjectId
+  winner                    User?      @relation("winner", fields: [winnerId], references: [id])
+  winnerId                  String?    @db.ObjectId
+  bracket                   BracketType?
+  nextMatch                 Match?     @relation("MatchNextMatch", fields: [nextMatchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nextMatchId               String?    @db.ObjectId
+  previousMatches           Match[]    @relation("MatchNextMatch")
+  nextMatchPlayerSlot       Int?
+  nextLoserMatch            Match?     @relation("MatchNextLoserMatch", fields: [nextLoserMatchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nextLoserMatchId          String?    @db.ObjectId
+  previousLoserMatches      Match[]    @relation("MatchNextLoserMatch")
+  nextLoserMatchPlayerSlot  Int?
+}
+

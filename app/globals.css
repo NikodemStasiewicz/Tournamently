@@ -24,3 +24,9 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+ a:hover {
+    @apply transition-shadow shadow-lg;
+  }
+  img{
+    @apply transition-transform hover:scale-[1.02];
+  }
