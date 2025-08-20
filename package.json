@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@nivo/bar": "^0.99.0",
     "@prisma/client": "^5.15.0",
     "@types/recharts": "^1.8.29",
     "axios": "^1.11.0",
@@ -28,6 +29,7 @@
     "react": "19.1.0",
     "react-archer": "^4.4.0",
     "react-dom": "19.1.0",
+    "react-icons": "^5.5.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "uuid": "^11.1.0"
