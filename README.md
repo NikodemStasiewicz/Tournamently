@@ -119,6 +119,7 @@ npm install --legacy-peer-deps
 3. Generate Prisma client
 ```
 npx prisma generate
+npx prisma db push
 ```
 
 4. Configure environment variables (see below) in `.env`
