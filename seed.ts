@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Wrzuc przykładowy seed.json do katalogu projektu
-const seedPath = path.join(__dirname, "seed.json");
+const seedPath = path.join(__dirname, "seedzik.json");
 const seed = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
 
 async function main() {
