@@ -18,67 +18,196 @@ enum BracketType {
   grandFinal
 }
 
+enum Role {
+  PLAYER
+  ORGANIZER
+  ADMIN
+}
+
+enum TeamRole {
+  MEMBER
+  CAPTAIN
+  OWNER
+}
+
+enum JoinRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 model User {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   email     String    @unique
+  username  String    // usunięte @unique tymczasowo
   name      String?
-  username  String
-  password  String  
+  password  String
+  role      Role      @default(PLAYER)
+  createdAt DateTime  @default(now())
+
+  // Tournament relationships
   tournaments TournamentParticipant[]
+  ownedTournaments Tournament[] @relation("TournamentOwner")
+  
+  // Match relationships 
   matchesAsPlayer1 Match[] @relation("player1")
   matchesAsPlayer2 Match[] @relation("player2")
   matchesAsWinner  Match[] @relation("winner")
+  matchParticipants MatchParticipant[]
+  
+  // Team relationships
+  teamMemberships  TeamMember[]
+  ownedTeams       Team[] @relation("TeamOwner")
+  
+  // Team join requests
+  sentJoinRequests     TeamJoinRequest[] @relation("JoinRequestUser")
+}
 
-  ownedTournaments Tournament[] @relation("TournamentOwner")
+model Team {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String      @unique
+  description String?
+  avatar      String?     // URL do zdjęcia teamu
+  isPublic    Boolean     @default(true)  // czy można przeszukiwać team
+  requireApproval Boolean @default(false) // czy dołączenie wymaga akceptacji
+  maxMembers  Int         @default(5)
+  createdAt   DateTime    @default(now())
+  
+  // Relationships
+  members      TeamMember[]
+  participants TournamentParticipant[]
+  joinRequests TeamJoinRequest[]
+  matchParticipants MatchParticipant[]
+  
+  // Owner relationship
+  ownerId      String      @db.ObjectId
+  owner        User        @relation("TeamOwner", fields: [ownerId], references: [id])
+}
+
+model TeamJoinRequest {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  status    JoinRequestStatus @default(PENDING)
+  message   String?           // opcjonalna wiadomość od gracza
+  createdAt DateTime          @default(now())
+  
+  // Relationships
+  team      Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String            @db.ObjectId
+  user      User              @relation("JoinRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String            @db.ObjectId
+  
+  @@unique([teamId, userId]) // jeden request na team per user
+}
+
+model TeamMember {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamRole TeamRole @default(MEMBER)  // dodana rola w teamie
+  joinedAt DateTime @default(now())
+  
+  // Relationships
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.ObjectId
+
+  @@unique([teamId, userId])
 }
 
 model Tournament {
   id               String    @id @default(auto()) @map("_id") @db.ObjectId
   name             String
+  description      String?
   format           Format
-  participantLimit  Int
+  participantLimit Int
   startDate        DateTime
   endDate          DateTime
-  createdAt        DateTime  @default(now())
+  registrationEnd  DateTime? // deadline na rejestrację
+  createdAt        DateTime? @default(now())
   game             String
+  
+  // Tournament type settings
+  tournamentType   String    @default("MIXED") // "SOLO_ONLY", "TEAM_ONLY", "MIXED"
+  teamSize         Int?      // wymagany rozmiar teamu dla turniejów teamowych
+  minTeamSize      Int?      // minimalny rozmiar teamu
+  maxTeamSize      Int?      // maksymalny rozmiar teamu
+  
+  // Relationships
   matches          Match[]   @relation("tournamentMatches")
   participants     TournamentParticipant[]
-
   ownerId          String    @db.ObjectId
   owner            User      @relation("TournamentOwner", fields: [ownerId], references: [id])
 }
 
 model TournamentParticipant {
   id           String     @id @default(auto()) @map("_id") @db.ObjectId
-  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  joinedAt     DateTime   @default(now())
+  
+  // Tournament relationship
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   tournamentId String     @db.ObjectId
-  user         User       @relation(fields: [userId], references: [id])
-  userId       String     @db.ObjectId
-  joinedAt     DateTime?  @default(now())
 
-  @@unique([tournamentId, userId])
+  // Participant może być user ALBO team (ale nie oba)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @db.ObjectId
+  
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String? @db.ObjectId
+
+
 }
 
 model Match {
   id                        String     @id @default(auto()) @map("_id") @db.ObjectId
-  tournament                Tournament @relation("tournamentMatches", fields: [tournamentId], references: [id], onDelete: Cascade)
-  tournamentId              String     @db.ObjectId
   round                     Int
   matchNumber               Int?
+  bracket                   BracketType?
+  scheduledAt               DateTime?  // dodane - planowany czas meczu
+  startedAt                 DateTime?  // dodane - rzeczywisty start
+  completedAt               DateTime?  // dodane - zakończenie meczu
+  
+  // Tournament relationship
+  tournament                Tournament @relation("tournamentMatches", fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId              String     @db.ObjectId
+  
+  // Players (dla compatibility z obecnym systemem)
   player1                   User?      @relation("player1", fields: [player1Id], references: [id])
   player1Id                 String?    @db.ObjectId
   player2                   User?      @relation("player2", fields: [player2Id], references: [id])
   player2Id                 String?    @db.ObjectId
   winner                    User?      @relation("winner", fields: [winnerId], references: [id])
   winnerId                  String?    @db.ObjectId
-  bracket                   BracketType?
+  
+  // Match participants (dla teamów i bardziej elastycznego systemu)
+  participants              MatchParticipant[]
+  
+  // Bracket navigation
   nextMatch                 Match?     @relation("MatchNextMatch", fields: [nextMatchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   nextMatchId               String?    @db.ObjectId
   previousMatches           Match[]    @relation("MatchNextMatch")
   nextMatchPlayerSlot       Int?
+  
   nextLoserMatch            Match?     @relation("MatchNextLoserMatch", fields: [nextLoserMatchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   nextLoserMatchId          String?    @db.ObjectId
   previousLoserMatches      Match[]    @relation("MatchNextLoserMatch")
   nextLoserMatchPlayerSlot  Int?
 }
 
+
+model MatchParticipant {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId String @db.ObjectId
+  
+  // Może być user lub team
+  user    User?  @relation(fields: [userId], references: [id])
+  userId  String? @db.ObjectId
+  
+  team    Team?  @relation(fields: [teamId], references: [id]) 
+  teamId  String? @db.ObjectId
+  
+  slot    Int    // 1 lub 2 (pozycja w meczu)
+  isWinner Boolean @default(false)
+
+  @@unique([matchId, slot]) // jeden uczestnik na slot w meczu
+}

@@ -4,15 +4,15 @@ export async function getUserRanking(game?: string) {
   const users = await prisma.user.findMany({
     include: {
       matchesAsWinner: {
-        include: { tournament: true },
+        select: { tournamentId: true },
         where: game ? { tournament: { game } } : undefined,
       },
       matchesAsPlayer1: {
-        include: { tournament: true },
+        select: { tournamentId: true },
         where: game ? { tournament: { game } } : undefined,
       },
       matchesAsPlayer2: {
-        include: { tournament: true },
+        select: { tournamentId: true },
         where: game ? { tournament: { game } } : undefined,
       },
     },
@@ -20,8 +20,8 @@ export async function getUserRanking(game?: string) {
 
   const ranking = users.map(user => {
     const allTournaments = [
-      ...user.matchesAsPlayer1.map(m => m.tournament.id),
-      ...user.matchesAsPlayer2.map(m => m.tournament.id),
+      ...user.matchesAsPlayer1.map(m => m.tournamentId),
+      ...user.matchesAsPlayer2.map(m => m.tournamentId),
     ];
     const uniqueTournaments = Array.from(new Set(allTournaments));
 

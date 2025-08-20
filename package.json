@@ -11,6 +11,8 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^5.15.0",
+    "@types/recharts": "^1.8.29",
+    "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "date-fns": "^4.1.0",

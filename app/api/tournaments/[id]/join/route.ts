@@ -32,23 +32,7 @@ export async function POST(request: Request, context: Params) {
       return NextResponse.json({ error: "Jesteś już zapisany na ten turniej" }, { status: 400 });
     }
 
-    // Dodaj użytkownika do turnieju
-    await prisma.tournamentParticipant.create({
-      data: {
-        tournamentId,
-        userId,
-      },
-    });
-
-    // Pobierz listę wszystkich uczestników turnieju
-    const participants = await prisma.tournamentParticipant.findMany({
-      where: { tournamentId },
-      select: { userId: true },
-    });
-
-    const userIds = participants.map((p) => p.userId);
-
-    // Pobierz format i limit uczestników
+    // Pobierz turniej (format i limit) oraz sprawdź dostępność miejsc
     const tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
       select: { format: true, participantLimit: true },
@@ -58,8 +42,29 @@ export async function POST(request: Request, context: Params) {
       return NextResponse.json({ error: "Turniej nie istnieje" }, { status: 404 });
     }
 
-    // Jeśli osiągnięto komplet uczestników -> generuj drabinkę
-    if (userIds.length === tournament.participantLimit) {
+    const currentCount = await prisma.tournamentParticipant.count({
+      where: { tournamentId },
+    });
+
+    if (currentCount >= tournament.participantLimit) {
+      return NextResponse.json({ error: "Turniej jest pełny" }, { status: 400 });
+    }
+
+    // Dodaj użytkownika do turnieju
+    await prisma.tournamentParticipant.create({
+      data: {
+        tournamentId,
+        userId,
+      },
+    });
+
+    // Jeśli po dodaniu osiągnięto komplet uczestników -> generuj drabinkę
+    if (currentCount + 1 === tournament.participantLimit) {
+      const participants = await prisma.tournamentParticipant.findMany({
+        where: { tournamentId },
+        select: { userId: true },
+      });
+      const userIds = participants.map((p) => p.userId);
       await createBracketInDb(tournamentId, userIds, tournament.format);
     }
 

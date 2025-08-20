@@ -73,23 +73,6 @@ export default function EditTournamentPage() {
             className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
           />
 
-          <input
-            type="number"
-            value={tournament.participantLimit}
-            onChange={e => setTournament({ ...tournament, participantLimit: Number(e.target.value) })}
-            placeholder="Limit uczestników"
-            className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-          />
-
-          <select
-            value={tournament.format}
-            onChange={e => setTournament({ ...tournament, format: e.target.value })}
-            className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-          >
-            <option value="SINGLE_ELIMINATION">Single Elimination</option>
-            <option value="DOUBLE_ELIMINATION">Double Elimination</option>
-          </select>
-
           <button
             type="submit"
             className="w-full py-3 rounded-md bg-indigo-600 hover:bg-indigo-700 transition text-white font-semibold shadow-[0_0_15px_#6366f1]"

@@ -14,6 +14,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
+    // Walidacja klienta (pomocnicza, źródłem prawdy jest API)
+    if (!/^[-a-zA-Z0-9_]{3,30}$/.test(username)) {
+      setError("Nazwa użytkownika: 3-30 znaków, tylko litery/cyfry/_.");
+      return;
+    }
+    if (!/^([^\s@]+)@([^\s@]+)\.[^\s@]+$/.test(email)) {
+      setError("Nieprawidłowy adres email.");
+      return;
+    }
+    if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("Hasło min. 8 znaków i zawiera małą, wielką literę i cyfrę.");
+      return;
+    }
+
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -21,7 +35,6 @@ export default function RegisterPage() {
     });
 
     if (res.ok) {
-      // Rejestracja udana - przekieruj np. do logowania lub dashboard
       router.push("/login");
     } else {
       const data = await res.json();
@@ -47,6 +60,9 @@ export default function RegisterPage() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="np. gracz123"
               required
+              minLength={3}
+              maxLength={30}
+              pattern="[-a-zA-Z0-9_]+"
             />
           </div>
 
@@ -77,8 +93,9 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              minLength={6}
+              minLength={8}
             />
+            <p className="text-xs text-slate-500 mt-1">Min. 8 znaków, w tym mała, wielka litera i cyfra.</p>
           </div>
 
           <button

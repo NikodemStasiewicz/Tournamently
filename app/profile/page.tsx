@@ -1,77 +1,4 @@
-// // app/profile/page.tsx
-// import React from "react";
-// import { prisma } from "@/app/lib/prisma";
-// import { getCurrentUser } from "@/app/lib/auth";
-// import { notFound } from "next/navigation";
-// import ProfileTabs from "../components/ProfileTabs";
 
-// export default async function ProfilePage() {
-//   const user = await getCurrentUser();
-//   if (!user) notFound();
-
-//   const dbUser = await prisma.user.findUnique({
-//     where: { id: user.id },
-//     select: {
-//       id: true,
-//       email: true,
-//       username: true,
-//       name: true,
-//       ownedTournaments: {
-//         select: { id: true, name: true, startDate: true, format: true },
-//         orderBy: { createdAt: "desc" },
-//       },
-//       tournaments: {
-//         select: {
-//           tournament: {
-//             select: { id: true, name: true, startDate: true, format: true },
-//           },
-//           joinedAt: true,
-//         },
-//         orderBy: { joinedAt: "desc" },
-//       },
-//     },
-//   });
-
-//   if (!dbUser) notFound();
-
-//   // Konwersja Date -> string (ISO) tak, żeby komponenty klienta otrzymały stringi
-//   const created = (dbUser.ownedTournaments ?? []).map((t) => ({
-//     id: t.id,
-//     name: t.name,
-//     format: t.format as string,
-//     startDate: t.startDate ? t.startDate.toISOString() : null,
-//   }));
-
-//   const joined = (dbUser.tournaments ?? []).map((p) => ({
-//     id: p.tournament.id,
-//     name: p.tournament.name,
-//     format: p.tournament.format as string,
-//     startDate: p.tournament.startDate ? p.tournament.startDate.toISOString() : null,
-//     joinedAt: p.joinedAt ? p.joinedAt.toISOString() : null,
-//   }));
-
-//   return (
-//     <main className="min-h-screen p-6 bg-gradient-to-br from-gray-100 to-white text-black">
-//       <div className="max-w-5xl mx-auto">
-//         <header className="bg-white p-6 rounded-lg shadow mb-6">
-//           <h1 className="text-3xl font-bold">{dbUser.name || dbUser.username}</h1>
-//           <p className="text-sm text-gray-500">{dbUser.email}</p>
-//         </header>
-
-//         <ProfileTabs
-//           user={{
-//             id: dbUser.id,
-//             email: dbUser.email,
-//             username: dbUser.username,
-//             name: dbUser.name,
-//           }}
-//           created={created}
-//           joined={joined}
-//         />
-//       </div>
-//     </main>
-//   );
-// }
 
 import React from "react";
 import Link from "next/link";
@@ -95,19 +22,29 @@ export default async function ProfilePage() {
         select: { id: true, name: true, startDate: true, format: true },
         orderBy: { createdAt: "desc" },
       },
-      tournaments: {
-        select: {
-          tournament: {
-            select: { id: true, name: true, startDate: true, format: true },
           },
-          joinedAt: true,
-        },
-        orderBy: { joinedAt: "desc" },
-      },
-    },
   });
 
   if (!dbUser) notFound();
+
+  // Pobierz uczestnictwa użytkownika i następnie turnieje po ID
+  const participations = await prisma.tournamentParticipant.findMany({
+    where: { userId: user.id },
+    select: { tournamentId: true },
+  });
+
+  const joinedTournamentIds = participations
+    .map((p) => p.tournamentId)
+    .filter((id): id is string => Boolean(id));
+
+  const joinedTournaments = joinedTournamentIds.length
+    ? await prisma.tournament.findMany({
+        where: { id: { in: joinedTournamentIds } },
+        select: { id: true, name: true, startDate: true, format: true },
+      })
+    : [];
+
+  const tMap = new Map(joinedTournaments.map((t) => [t.id, t] as const));
 
   const created = (dbUser.ownedTournaments ?? []).map((t) => ({
     id: t.id,
@@ -116,13 +53,24 @@ export default async function ProfilePage() {
     startDate: t.startDate ? t.startDate.toISOString() : null,
   }));
 
-  const joined = (dbUser.tournaments ?? []).map((p) => ({
-    id: p.tournament.id,
-    name: p.tournament.name,
-    format: p.tournament.format as string,
-    startDate: p.tournament.startDate ? p.tournament.startDate.toISOString() : null,
-    joinedAt: p.joinedAt ? p.joinedAt.toISOString() : null,
-  }));
+  const joined = participations
+    .map((p) => {
+      const t = tMap.get(p.tournamentId);
+      if (!t) return null;
+      return {
+        id: t.id,
+        name: t.name,
+        format: t.format as string,
+        startDate: t.startDate ? t.startDate.toISOString() : null,
+      };
+    })
+    .filter(Boolean) as {
+      id: string;
+      name: string;
+      format: string;
+      startDate: string | null;
+      joinedAt: string | null;
+    }[];
 
   return (
     <main className="min-h-screen p-6 relative text-white font-sans

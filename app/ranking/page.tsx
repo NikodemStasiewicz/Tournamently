@@ -1,33 +1,4 @@
-// import React from "react";
-// import { getUserRanking } from "../lib/ranking";
-// import { RankingTable } from "../components/RankingTable";
-// import Link from "next/link";
 
-// import { ArrowLeftIcon } from "lucide-react";
-// export default async function RankingPage() {
-//   const ranking = await getUserRanking();
-
-//   return (
-//     <main className="p-8 bg-gray-900 min-h-screen text-white">
-//       {/* Strzałka wstecz */}
-//       <Link
-//         href="/"
-//         className="flex items-center text-indigo-400 hover:text-indigo-300 font-semibold mb-6 transition-colors"
-//       >
-//         <ArrowLeftIcon className="w-6 h-6 mr-2" />
-//         Wróć
-//       </Link>
-
-//       <h1 className="text-5xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-400 animate-text">
-//         Ranking graczy
-//       </h1>
-      
-//       <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl">
-//         <RankingTable data={ranking} />
-//       </div>
-//     </main>
-//   );
-// }
 import React from "react";
 import { getUserRanking } from "../lib/ranking";
 import { RankingTable } from "../components/RankingTable";

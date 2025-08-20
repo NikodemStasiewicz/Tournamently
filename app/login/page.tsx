@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -21,8 +22,12 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      // Logowanie udane - przekieruj na stronę główną lub panel
-      router.push("/");
+      
+      const callback = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('callbackUrl') : null;
+      const target = callback && callback.startsWith('/') ? callback : '/';
+      router.replace(target);
+      router.refresh();
+      return;
     } else {
       // Obsłuż błąd
       const data = await res.json();
@@ -70,13 +75,14 @@ export default function LoginPage() {
             Zaloguj się
           </button>
         </form>
+        <p className="text-center text-sm text-slate-600 mt-6">
+                  Nie masz konta?{" "}
+                  <Link href="/register" className="text-indigo-600 hover:underline font-medium">
+                    Zarejestruj się 
+                  </Link>
+                </p>
       </div>
     </div>
   );
 }
-    //  <p className="text-center text-sm text-slate-600 mt-6">
-    //       Nie masz konta?{" "}
-    //       <Link href="/register" className="text-indigo-600 hover:underline font-medium">
-    //         Zarejestruj się
-    //       </Link>
-    //     </p>
+   

@@ -36,6 +36,17 @@ export default async function Navbar() {
             </Link>
           )}
 
+           {user && (
+            <Link
+              href="/teams"
+              className="relative group px-4 py-2 font-bold text-sm uppercase tracking-wide text-slate-300 hover:text-white transition-all duration-300"
+            >
+              <span className="relative z-10">Drużyny</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 border border-cyan-500/30 group-hover:border-cyan-400/50"></div>
+              <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-400 group-hover:w-full transition-all duration-300"></div>
+            </Link>
+          )}
+
           {user && (
             <Link
               href="/ranking"
