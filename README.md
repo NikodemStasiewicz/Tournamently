@@ -7,6 +7,11 @@ App to manage tournaments
 ```bash
 npm install
 ```
+```bash
+npx ts-node seed.ts
+```
+
+
 
 ```bash
 npm run dev
