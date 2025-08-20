@@ -1,0 +1,266 @@
+{
+  "User": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "createdAt",
+      "email",
+      "password",
+      "username"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "createdAt": { "$ref": "#/$defs/Date" },
+      "email": { "type": "string" },
+      "password": { "type": "string" },
+      "role": { "type": "string" },
+      "username": { "type": "string" }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      },
+      "Date": {
+        "type": "object",
+        "properties": { "$date": { "type": "string", "format": "date-time" } },
+        "required": ["$date"],
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "TeamJoinRequest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "createdAt",
+      "message",
+      "status",
+      "teamId",
+      "userId"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "createdAt": { "$ref": "#/$defs/Date" },
+      "message": { "type": "string" },
+      "status": { "type": "string" },
+      "teamId": { "$ref": "#/$defs/ObjectId" },
+      "userId": { "$ref": "#/$defs/ObjectId" }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      },
+      "Date": {
+        "type": "object",
+        "properties": { "$date": { "type": "string", "format": "date-time" } },
+        "required": ["$date"],
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "TeamMember": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "joinedAt",
+      "teamId",
+      "teamRole",
+      "userId"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "joinedAt": { "$ref": "#/$defs/Date" },
+      "teamId": { "$ref": "#/$defs/ObjectId" },
+      "teamRole": { "type": "string" },
+      "userId": { "$ref": "#/$defs/ObjectId" }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      },
+      "Date": {
+        "type": "object",
+        "properties": { "$date": { "type": "string", "format": "date-time" } },
+        "required": ["$date"],
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "Tournament": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "createdAt",
+      "endDate",
+      "format",
+      "game",
+      "name",
+      "ownerId",
+      "participantLimit",
+      "startDate",
+      "tournamentType"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "createdAt": { "$ref": "#/$defs/Date" },
+      "endDate": { "$ref": "#/$defs/Date" },
+      "format": { "type": "string" },
+      "game": { "type": "string" },
+      "name": { "type": "string" },
+      "ownerId": { "$ref": "#/$defs/ObjectId" },
+      "participantLimit": { "type": "integer" },
+      "startDate": { "$ref": "#/$defs/Date" },
+      "tournamentType": { "type": "string" }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      },
+      "Date": {
+        "type": "object",
+        "properties": { "$date": { "type": "string", "format": "date-time" } },
+        "required": ["$date"],
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "TournamentParticipant": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "tournamentId",
+      "userId"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "joinedAt": { "$ref": "#/$defs/Date" },
+      "tournamentId": { "$ref": "#/$defs/ObjectId" },
+      "userId": { "$ref": "#/$defs/ObjectId" }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      },
+      "Date": {
+        "type": "object",
+        "properties": { "$date": { "type": "string", "format": "date-time" } },
+        "required": ["$date"],
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "Team": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "createdAt",
+      "description",
+      "isPublic",
+      "maxMembers",
+      "name",
+      "ownerId",
+      "requireApproval"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "avatar": { "type": "string" },
+      "createdAt": { "$ref": "#/$defs/Date" },
+      "description": { "type": "string" },
+      "isPublic": { "type": "boolean" },
+      "maxMembers": { "type": "integer" },
+      "name": { "type": "string" },
+      "ownerId": { "$ref": "#/$defs/ObjectId" },
+      "requireApproval": { "type": "boolean" }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      },
+      "Date": {
+        "type": "object",
+        "properties": { "$date": { "type": "string", "format": "date-time" } },
+        "required": ["$date"],
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "Match": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "_id",
+      "round",
+      "tournamentId"
+    ],
+    "properties": {
+      "_id": { "$ref": "#/$defs/ObjectId" },
+      "bracket": { "type": "string" },
+      "bracketType": { "type": "string" },
+      "matchNumber": { "type": "integer" },
+      "nextLoserMatchId": { "$ref": "#/$defs/ObjectId" },
+      "nextLoserMatchPlayerSlot": { "type": "integer" },
+      "nextMatchId": {
+        "anyOf": [
+          { "$ref": "#/$defs/ObjectId" },
+          { "type": "null" }
+        ]
+      },
+      "nextMatchPlayerSlot": { "type": ["integer", "null"] },
+      "player1": { "type": "null" },
+      "player1Id": { "$ref": "#/$defs/ObjectId" },
+      "player2": { "type": "null" },
+      "player2Id": {
+        "anyOf": [
+          { "$ref": "#/$defs/ObjectId" },
+          { "type": "null" }
+        ]
+      },
+      "round": { "type": "integer" },
+      "tournamentId": { "$ref": "#/$defs/ObjectId" },
+      "winnerId": {
+        "anyOf": [
+          { "$ref": "#/$defs/ObjectId" },
+          { "type": "null" }
+        ]
+      }
+    },
+    "$defs": {
+      "ObjectId": {
+        "type": "object",
+        "properties": { "$oid": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" } },
+        "required": ["$oid"],
+        "additionalProperties": false
+      }
+    }
+  }
+}
