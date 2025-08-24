@@ -39,20 +39,35 @@ export async function POST(
     }
 
     if (team.requireApproval) {
-      // Utwórz prośbę o dołączenie
-      const joinRequest = await prisma.teamJoinRequest.create({
-        data: {
-          teamId,
-          userId: user.id,
-          message,
-          status: 'PENDING'
-        }
+      // Sprawdź, czy istnieje już oczekująca (lub jakakolwiek) prośba dla (teamId, userId)
+      const existingRequest = await prisma.teamJoinRequest.findFirst({
+        where: { teamId, userId: user.id, status: 'PENDING' }
       });
+      if (existingRequest) {
+        return NextResponse.json({ error: 'Prośba o dołączenie już istnieje i oczekuje na akceptację' }, { status: 400 });
+      }
 
-      return NextResponse.json({ 
-        message: 'Prośba wysłana, czekaj na akceptację', 
-        request: joinRequest 
-      });
+      try {
+        const joinRequest = await prisma.teamJoinRequest.create({
+          data: {
+            teamId,
+            userId: user.id,
+            message,
+            status: 'PENDING'
+          }
+        });
+
+        return NextResponse.json({ 
+          message: 'Prośba wysłana, czekaj na akceptację', 
+          request: joinRequest 
+        });
+      } catch (e: any) {
+        if (e?.code === 'P2002') {
+          // Unique constraint (teamId, userId)
+          return NextResponse.json({ error: 'Prośba o dołączenie już istnieje' }, { status: 400 });
+        }
+        throw e;
+      }
     } else {
       // Automatyczne dołączenie
       const teamMember = await prisma.teamMember.create({

@@ -24,6 +24,12 @@ export default async function TournamentPage({ params }: Params) {
         include: {
           player1: { select: { id: true, username: true, name: true } },
           player2: { select: { id: true, username: true, name: true } },
+          participants: {
+            include: {
+              user: { select: { id: true, username: true, name: true } },
+              team: { select: { id: true, name: true } },
+            },
+          },
         },
       },
     },
@@ -33,29 +39,80 @@ export default async function TournamentPage({ params }: Params) {
     notFound();
   }
 
-  const matches = tournament.matches.map((match) => ({
-    id: match.id,
-    round: match.round,
-    matchNumber: match.matchNumber ?? 0,
-    player1: match.player1
+  const matches = tournament.matches.map((match) => {
+    // Prefer participant-based (teams/mixed) data if present
+    const p1 = match.participants?.find((p: any) => p.slot === 1) ?? null;
+    const p2 = match.participants?.find((p: any) => p.slot === 2) ?? null;
+
+    const player1 = p1
+      ? p1.team
+        ? {
+            id: p1.team.id,
+            username: p1.team.name,
+            name: p1.team.name,
+            participantId: p1.id,
+          }
+        : p1.user
+        ? {
+            id: p1.user.id,
+            username: p1.user.username,
+            name: p1.user.name ?? p1.user.username,
+            participantId: p1.id,
+          }
+        : null
+      : match.player1
       ? {
           id: match.player1.id,
           username: match.player1.username,
           name: match.player1.name ?? match.player1.username,
         }
-      : null,
-    player2: match.player2
+      : null;
+
+    const player2 = p2
+      ? p2.team
+        ? {
+            id: p2.team.id,
+            username: p2.team.name,
+            name: p2.team.name,
+            participantId: p2.id,
+          }
+        : p2.user
+        ? {
+            id: p2.user.id,
+            username: p2.user.username,
+            name: p2.user.name ?? p2.user.username,
+            participantId: p2.id,
+          }
+        : null
+      : match.player2
       ? {
           id: match.player2.id,
           username: match.player2.username,
           name: match.player2.name ?? match.player2.username,
         }
-      : null,
-    winnerId: match.winnerId ?? null,
-    nextMatchId: match.nextMatchId ?? null,
-    nextMatchPlayerSlot: (match.nextMatchPlayerSlot ?? null) as 1 | 2 | null,
-    bracket: match.bracket as "winners" | "losers" | "grandFinal",
-  }));
+      : null;
+
+    // Compute winnerId for UI highlighting:
+    // - If participant-based winner flag exists, use the underlying userId/teamId to match player.id
+    // - Otherwise fallback to legacy match.winnerId (user id)
+    let computedWinnerId: string | null = match.winnerId ?? null;
+    const winnerParticipant = match.participants?.find((p: any) => p.isWinner);
+    if (winnerParticipant) {
+      computedWinnerId = (winnerParticipant.userId as string) ?? (winnerParticipant.teamId as string) ?? null;
+    }
+
+    return {
+      id: match.id,
+      round: match.round,
+      matchNumber: match.matchNumber ?? 0,
+      player1,
+      player2,
+      winnerId: computedWinnerId,
+      nextMatchId: match.nextMatchId ?? null,
+      nextMatchPlayerSlot: (match.nextMatchPlayerSlot ?? null) as 1 | 2 | null,
+      bracket: match.bracket as "winners" | "losers" | "grandFinal",
+    };
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white p-6">

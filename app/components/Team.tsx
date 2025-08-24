@@ -55,6 +55,13 @@ useEffect(() => {
     }
   }, [activeTab, debouncedSearchTerm]);
 
+  // Prefetch "Moje drużyny" po załadowaniu użytkownika, aby licznik był aktualny na zakładce
+  useEffect(() => {
+    if (user) {
+      fetchMyTeams({ silent: true });
+    }
+  }, [user]);
+
   const fetchTeams = async (term?: string) => {
     setLoading(true);
     try {
@@ -79,10 +86,11 @@ useEffect(() => {
     }
   };
 
-  const fetchMyTeams = async () => {
+  const fetchMyTeams = async (opts?: { silent?: boolean }) => {
     if (!user) return;
     
-    setLoading(true);
+    const silent = !!opts?.silent;
+    if (!silent) setLoading(true);
     try {
       const response = await fetch('/api/teams/my');
       const data = await response.json();
@@ -95,7 +103,7 @@ useEffect(() => {
     } catch (error) {
       console.error('Błąd pobierania moich drużyn:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -141,9 +149,9 @@ useEffect(() => {
         setAvatarFile(null);
         if (activeTab === 'browse') {
           fetchTeams();
-        } else {
-          fetchMyTeams();
         }
+        // Zawsze odśwież "Moje drużyny" w tle, aby licznik był aktualny
+        fetchMyTeams({ silent: true });
       } else {
         alert(data.error || 'Błąd tworzenia drużyny');
       }
@@ -174,6 +182,8 @@ useEffect(() => {
       if (response.ok) {
         alert(data.message);
         fetchTeams(); // Odśwież listę
+        // Odśwież licznik "Moje drużyny" w tle
+        fetchMyTeams({ silent: true });
       } else {
         alert(data.error || 'Błąd dołączania do drużyny');
       }
@@ -578,23 +588,29 @@ const MyTeamCard: React.FC<MyTeamCardProps> = ({ membership, onManage }) => {
         />
       )}
 
-      <div className="flex items-center justify-between mb-4 text-sm text-gray-400">
+      <div className="flex items-center justify-between mb-2 text-sm text-gray-400">
         <span className="flex items-center gap-1">
           <Users className="w-4 h-4" />
-          {team._count.members} członków
+          {team._count.members}{typeof team.maxMembers === 'number' ? `/${team.maxMembers}` : ''}
         </span>
         <span className="flex items-center gap-1">
           <Calendar className="w-4 h-4" />
           {team.owner.username}
         </span>
       </div>
+      <div className="w-full h-2 bg-gray-700 rounded mb-4 overflow-hidden">
+        <div
+          className="h-2 bg-blue-600"
+          style={{ width: `${Math.min(100, Math.round((team._count.members / (team.maxMembers || team._count.members)) * 100))}%` }}
+        />
+      </div>
 
-      {team._count.joinRequests > 0 && (teamRole === 'OWNER' || teamRole === 'CAPTAIN') && (
+      {Array.isArray((team as any).joinRequests) && (team as any).joinRequests.length > 0 && (teamRole === 'OWNER' || teamRole === 'CAPTAIN') && (
         <div className="mb-4 p-3 bg-orange-900/30 border border-orange-600/30 rounded-lg">
           <div className="flex items-center gap-2 text-orange-300">
             <UserPlus className="w-4 h-4" />
             <span className="text-sm font-medium">
-              {team._count.joinRequests} nowych próśb o dołączenie
+              {((team as any).joinRequests as any[]).length} oczekujących próśb
             </span>
           </div>
         </div>
@@ -602,7 +618,7 @@ const MyTeamCard: React.FC<MyTeamCardProps> = ({ membership, onManage }) => {
 
       <button
         onClick={onManage}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2d"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
       >
         <Settings className="w-4 h-4" />
         Zarządzaj drużyną

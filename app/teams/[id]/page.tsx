@@ -2,6 +2,8 @@ import { prisma } from "@/app/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/app/lib/auth";
+import JoinRequestsList from "@/app/components/JoinRequestsList";
+import MemberManagementList from "@/app/components/MemberManagementList";
 
 interface Params {
   params: { id: string };
@@ -23,6 +25,10 @@ export default async function TeamPage({ params }: Params) {
           { joinedAt: "asc" },
         ],
       },
+      joinRequests: {
+        where: { status: "PENDING" },
+        include: { user: { select: { username: true, name: true } } },
+      },
       _count: { select: { members: true, joinRequests: true } },
     },
   });
@@ -34,7 +40,10 @@ export default async function TeamPage({ params }: Params) {
   const isMember = !!user?.id && team.members.some((m) => m.userId === user.id);
   const isOwnerOrCaptain =
     !!user?.id && team.members.some((m) => m.userId === user.id && (m.teamRole === "OWNER" || m.teamRole === "CAPTAIN"));
+  const isOwner = !!user?.id && team.members.some((m) => m.userId === user.id && m.teamRole === "OWNER");
 
+  const pendingRequestsCount = team.joinRequests ? team.joinRequests.length : 0;
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white p-6">
       <div className="max-w-5xl mx-auto space-y-8">
@@ -55,9 +64,9 @@ export default async function TeamPage({ params }: Params) {
             <div className="text-xs text-gray-400 mt-1">
               {team.requireApproval ? "Wymagana akceptacja dołączenia" : "Dołączenie bez akceptacji"}
             </div>
-            {team._count.joinRequests > 0 && isOwnerOrCaptain && (
+            {isOwnerOrCaptain && pendingRequestsCount > 0 && (
               <div className="mt-2 text-xs px-2 py-1 bg-blue-900 text-blue-200 rounded">
-                Oczekujące prośby: {team._count.joinRequests}
+                Oczekujące prośby: {pendingRequestsCount}
               </div>
             )}
           </div>
@@ -70,29 +79,44 @@ export default async function TeamPage({ params }: Params) {
           </section>
         )}
 
+        {isOwnerOrCaptain && (
+          <section className="bg-gray-800 rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-indigo-300 mb-4">Prośby o dołączenie</h2>
+            <JoinRequestsList requests={team.joinRequests || []} />
+          </section>
+        )}
+
         <section className="bg-gray-800 rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-indigo-300 mb-4">Członkowie</h2>
-          <ul className="divide-y divide-gray-700">
-            {team.members.map((m) => (
-              <li key={m.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{m.user.name ?? m.user.username}</div>
-                  <div className="text-xs text-gray-400">{m.user.username}</div>
-                </div>
-                <div className="text-xs">
-                  <span className={`px-2 py-1 rounded-full ${
-                    m.teamRole === "OWNER"
-                      ? "bg-yellow-900 text-yellow-300"
-                      : m.teamRole === "CAPTAIN"
-                      ? "bg-purple-900 text-purple-200"
-                      : "bg-gray-700 text-gray-200"
-                  }`}>
-                    {m.teamRole === "OWNER" ? "Właściciel" : m.teamRole === "CAPTAIN" ? "Kapitan" : "Członek"}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {isOwner ? (
+            <MemberManagementList
+              teamId={team.id}
+              currentUserId={user!.id}
+              members={team.members as any}
+            />
+          ) : (
+            <ul className="divide-y divide-gray-700">
+              {team.members.map((m) => (
+                <li key={m.id} className="py-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{m.user.name ?? m.user.username}</div>
+                    <div className="text-xs text-gray-400">{m.user.username}</div>
+                  </div>
+                  <div className="text-xs">
+                    <span className={`px-2 py-1 rounded-full ${
+                      m.teamRole === "OWNER"
+                        ? "bg-yellow-900 text-yellow-300"
+                        : m.teamRole === "CAPTAIN"
+                        ? "bg-purple-900 text-purple-200"
+                        : "bg-gray-700 text-gray-200"
+                    }`}>
+                      {m.teamRole === "OWNER" ? "Właściciel" : m.teamRole === "CAPTAIN" ? "Kapitan" : "Członek"}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <div className="flex justify-between">

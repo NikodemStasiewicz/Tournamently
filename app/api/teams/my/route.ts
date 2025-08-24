@@ -15,8 +15,12 @@ export async function GET() {
             owner: {
               select: { username: true, name: true }
             },
+            joinRequests: {
+              where: { status: 'PENDING' },
+              select: { id: true }
+            },
             _count: {
-              select: { members: true, joinRequests: true }
+              select: { members: true }
             }
             
           }

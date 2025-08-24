@@ -2,6 +2,7 @@ export interface Player {
   id?: string;
   username: string;
   name: string | null;  // tutaj przechowujemy wyświetlaną nazwę (np. username lub "Anonim")
+  participantId?: string; // dla trybu drużynowego/mieszanego -> id rekordu MatchParticipant
 }
 
 // export interface BracketMatch {

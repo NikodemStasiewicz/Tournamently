@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import { createParticipantBracketInDb } from "@/app/lib/createBracketInDb";
 
 export async function POST(request: Request, context: { params: { id: string } }) {
   const tournamentId = context.params.id;
@@ -14,41 +15,25 @@ export async function POST(request: Request, context: { params: { id: string } }
       return NextResponse.json({ error: "Turniej nie istnieje." }, { status: 404 });
     }
 
-    // Pobierz uczestników
+    // Pobierz uczestników (user lub team)
     const participants = await prisma.tournamentParticipant.findMany({
       where: { tournamentId },
+      select: { userId: true, teamId: true },
     });
 
     if (participants.length < 2) {
       return NextResponse.json({ error: "Za mało uczestników." }, { status: 400 });
     }
 
-    // Wymieszaj uczestników
-    const shuffled = participants.sort(() => Math.random() - 0.5);
-    const totalPlayers = shuffled.length;
-    const matches = [];
+    // Zbuduj listę entries dla generatora (userId lub teamId)
+    const entries = participants.map((p) => ({
+      userId: p.userId ?? null,
+      teamId: p.teamId ?? null,
+    }));
 
-    // Utwórz mecze 1. rundy
-    for (let i = 0; i < totalPlayers; i += 2) {
-      const player1 = shuffled[i];
-      const player2 = shuffled[i + 1];
+    await createParticipantBracketInDb(tournamentId, entries, tournament.format);
 
-      const match = await prisma.match.create({
-        data: {
-          tournamentId,
-          round: 1,
-          matchNumber: i / 2 + 1,
-          bracket: "winners",
-          player1Id: player1.userId,
-          player2Id: player2?.userId || null,
-          // Jeśli player2 == null, to BYE – automatyczna wygrana
-        },
-      });
-
-      matches.push(match);
-    }
-
-    return NextResponse.json({ message: "Mecze 1. rundy wygenerowane", matches });
+    return NextResponse.json({ message: "Drabinka wygenerowana" });
   } catch (error) {
     console.error("Błąd generowania meczów:", error);
     return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });

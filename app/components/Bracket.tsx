@@ -89,10 +89,14 @@ function PlayerWithButton({
   }
 
   const selectWinner = async () => {
+    const payload = player?.participantId
+      ? { participantId: player.participantId }
+      : { winnerId: player?.id };
+
     await fetch(`/api/matches/${matchId}/set-winner`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ winnerId: player.id }),
+      body: JSON.stringify(payload),
     });
     location.reload();
   };
