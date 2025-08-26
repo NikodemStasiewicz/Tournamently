@@ -42,7 +42,10 @@ export async function GET(request: Request) {
     // Pobierz uczestników
     const participants = await prisma.tournamentParticipant.findMany({
       where: { tournamentId },
-      include: { user: { select: { id: true, username: true, name: true } } },
+      include: {
+        user: { select: { id: true, username: true, name: true } },
+        team: { select: { id: true, name: true } },
+      },
     });
 
     if (!participants || participants.length === 0) {
@@ -56,7 +59,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const playerIds = participants.map((p) => p.user.id);
+    // Unified participants (users or teams) handled below
 
     // Pobierz wszystkie mecze turnieju
     const matches = await prisma.match.findMany({
@@ -69,53 +72,102 @@ export async function GET(request: Request) {
         round: true,
         bracket: true,
         matchNumber: true,
+        participants: {
+          select: { userId: true, teamId: true, isWinner: true, slot: true },
+        },
       },
       orderBy: [
         { round: 'asc' },
         { matchNumber: 'asc' }
       ]
-    }) as MatchData[];
+    }) as any[];
 
     // Inicjuj statystyki graczy
     const playerStatsMap = new Map<string, PlayerStats>();
     
-    for (const participant of participants) {
-      const id = participant.user.id;
-      playerStatsMap.set(id, {
-        playerId: id,
-        username: participant.user.username,
-        displayName: participant.user.name ?? participant.user.username,
-        wins: 0,
-        losses: 0,
-        played: 0,
-        winRate: 0,
-        streak: 0,
-        form: 0,
-        avgOpponentStrength: 0,
-        dominance: 0,
-        recentMatches: []
-      });
+    for (const participant of participants as any[]) {
+      if (participant.user) {
+        const key = `user:${participant.user.id}`;
+        playerStatsMap.set(key, {
+          playerId: key,
+          username: participant.user.username,
+          displayName: participant.user.name ?? participant.user.username,
+          wins: 0,
+          losses: 0,
+          played: 0,
+          winRate: 0,
+          streak: 0,
+          form: 0,
+          avgOpponentStrength: 0,
+          dominance: 0,
+          recentMatches: []
+        });
+      } else if (participant.team) {
+        const key = `team:${participant.team.id}`;
+        playerStatsMap.set(key, {
+          playerId: key,
+          username: participant.team.name,
+          displayName: participant.team.name,
+          wins: 0,
+          losses: 0,
+          played: 0,
+          winRate: 0,
+          streak: 0,
+          form: 0,
+          avgOpponentStrength: 0,
+          dominance: 0,
+          recentMatches: []
+        });
+      }
     }
 
-    // Analizuj mecze
-    const finishedMatches = matches.filter(m => m.winnerId);
+    // Analizuj mecze (obsługa trybu legacy i uczestników drużynowych)
+    const normalizedFinished: MatchData[] = [];
     
-    for (const match of finishedMatches) {
-      const { player1Id, player2Id, winnerId } = match;
-      
-      if (!player1Id || !player2Id || !winnerId) continue;
-      
-      const winner = playerStatsMap.get(winnerId);
-      const loser = playerStatsMap.get(winnerId === player1Id ? player2Id : player1Id);
-      
-      if (winner && loser) {
-        winner.wins += 1;
-        winner.played += 1;
-        winner.recentMatches.push(match);
-        
-        loser.losses += 1;
-        loser.played += 1;
-        loser.recentMatches.push(match);
+    for (const m of matches as any[]) {
+      let p1Key: string | null = null;
+      let p2Key: string | null = null;
+      let winnerKey: string | null = null;
+    
+      if ((m as any).participants && (m as any).participants.length > 0) {
+        const p1 = (m as any).participants.find((p: any) => p.slot === 1) || null;
+        const p2 = (m as any).participants.find((p: any) => p.slot === 2) || null;
+        const w = (m as any).participants.find((p: any) => p.isWinner) || null;
+        p1Key = p1 ? (p1.userId ? `user:${p1.userId}` : p1.teamId ? `team:${p1.teamId}` : null) : null;
+        p2Key = p2 ? (p2.userId ? `user:${p2.userId}` : p2.teamId ? `team:${p2.teamId}` : null) : null;
+        winnerKey = w ? (w.userId ? `user:${w.userId}` : w.teamId ? `team:${w.teamId}` : null) : null;
+      } else {
+        // Legacy (solo) pola na Match
+        p1Key = m.player1Id ? `user:${m.player1Id}` : null;
+        p2Key = m.player2Id ? `user:${m.player2Id}` : null;
+        winnerKey = m.winnerId ? `user:${m.winnerId}` : null;
+      }
+    
+      if (p1Key && p2Key && winnerKey) {
+        const normalized: MatchData = {
+          id: m.id,
+          player1Id: p1Key,
+          player2Id: p2Key,
+          winnerId: winnerKey,
+          round: m.round,
+          bracket: m.bracket,
+          matchNumber: m.matchNumber,
+        };
+        normalizedFinished.push(normalized);
+    
+        const winner = playerStatsMap.get(winnerKey);
+        const loserKey = winnerKey === p1Key ? p2Key : p1Key;
+        const loser = playerStatsMap.get(loserKey!);
+    
+        if (winner && loser) {
+          winner.wins += 1;
+          winner.played += 1;
+          winner.recentMatches.push(normalized);
+    
+          loser.losses += 1;
+          loser.played += 1;
+          loser.recentMatches.push(normalized);
+        }
       }
     }
 
@@ -158,25 +210,180 @@ export async function GET(request: Request) {
     const topContenders = players.slice(0, Math.min(5, players.length));
     
     // Head-to-head statistics
-    const headToHeads = detailed ? calculateHeadToHeads(players, finishedMatches) : [];
+    const headToHeads = detailed ? calculateHeadToHeads(players, normalizedFinished) : [];
     
     // Insights
     const insights = calculateInsights(players);
     
     // Confidence level predykcji
-    const confidence = calculatePredictionConfidence(players, finishedMatches);
+    const confidence = calculatePredictionConfidence(players, normalizedFinished);
+
+    // Monte Carlo simulation (single-elimination approximation)
+    // Supports both users and teams via unified keys: "user:{id}" / "team:{id}"
+    const runsParam = Number(url.searchParams.get("mcRuns") || "1000");
+    const runs = Math.max(200, Math.min(5000, isNaN(runsParam) ? 1000 : runsParam));
+
+    // Build quick lookup for player stats
+    const statsMap = new Map<string, PlayerStats>();
+    for (const p of players) statsMap.set(p.playerId, p);
+
+    // Helper to convert match participant row to unified key
+    const toKey = (p: any): string | null => {
+      if (!p) return null;
+      if (p.userId) return `user:${p.userId}`;
+      if (p.teamId) return `team:${p.teamId}`;
+      return null;
+    };
+
+    // Seed first round pairings from actual round 1 matches when available
+    const round1Matches = (matches as any[]).filter(
+      (m: any) => m.round === 1 && (m.bracket === "winners" || m.bracket == null)
+    );
+
+    const allKeys = players.map((p) => p.playerId);
+    const used = new Set<string>();
+    const pairings: Array<[string, string | null]> = [];
+
+    for (const m of round1Matches) {
+      let p1Key: string | null = null;
+      let p2Key: string | null = null;
+
+      if (Array.isArray(m.participants) && m.participants.length) {
+        const p1 = m.participants.find((pp: any) => pp.slot === 1) || null;
+        const p2 = m.participants.find((pp: any) => pp.slot === 2) || null;
+        p1Key = toKey(p1);
+        p2Key = toKey(p2);
+      } else {
+        p1Key = m.player1Id ? `user:${m.player1Id}` : null;
+        p2Key = m.player2Id ? `user:${m.player2Id}` : null;
+      }
+
+      if (p1Key && p2Key && statsMap.has(p1Key) && statsMap.has(p2Key)) {
+        if (!used.has(p1Key) && !used.has(p2Key)) {
+          pairings.push([p1Key, p2Key]);
+          used.add(p1Key);
+          used.add(p2Key);
+        }
+      }
+    }
+
+    // Pair remaining at random
+    const remaining = allKeys.filter((k) => !used.has(k));
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+    for (let i = 0; i < remaining.length; i += 2) {
+      const a = remaining[i];
+      const b = remaining[i + 1] ?? null; // bye if odd
+      pairings.push([a, b]);
+    }
+
+    // Pairwise win probability from current metrics (logistic transform)
+    const prob = (aKey: string, bKey: string): number => {
+      const a = statsMap.get(aKey)!;
+      const b = statsMap.get(bKey)!;
+      const scoreA = (a.winRate || 0) + a.wins * 2 + (a.form || 0) * 3 + Math.max(0, a.streak || 0) * 2;
+      const scoreB = (b.winRate || 0) + b.wins * 2 + (b.form || 0) * 3 + Math.max(0, b.streak || 0) * 2;
+      const diff = scoreA - scoreB;
+      const p = 1 / (1 + Math.exp(-diff / 12));
+      return Math.max(0.05, Math.min(0.95, p)); // clamp extremes
+    };
+
+    const winCounts = new Map<string, number>();
+    const finalCounts = new Map<string, number>();
+    for (const k of allKeys) {
+      winCounts.set(k, 0);
+      finalCounts.set(k, 0);
+    }
+
+    for (let r = 0; r < runs; r++) {
+      // Clone initial round
+      let round: Array<[string, string | null]> = pairings.map((p) => [p[0], p[1]]);
+
+      if (round.length === 1) {
+        const [fa, fb] = round[0];
+        if (fa) finalCounts.set(fa, (finalCounts.get(fa) || 0) + 1);
+        if (fb) finalCounts.set(fb, (finalCounts.get(fb) || 0) + 1);
+      }
+
+      while (round.length > 1) {
+        if (round.length === 2) {
+          // Track finalists (participants of the last two semis)
+          for (const [a, b] of round) {
+            if (a) finalCounts.set(a, (finalCounts.get(a) || 0) + 1);
+            if (b) finalCounts.set(b, (finalCounts.get(b) || 0) + 1);
+          }
+        }
+
+        const winners: string[] = [];
+        for (const [a, b] of round) {
+          if (a && !b) {
+            winners.push(a); // bye
+            continue;
+          }
+          if (!a && b) {
+            winners.push(b); // bye
+            continue;
+          }
+          if (!a || !b) continue;
+          const pA = prob(a, b);
+          const w = Math.random() < pA ? a : b;
+          winners.push(w);
+        }
+
+        const next: Array<[string, string | null]> = [];
+        for (let i = 0; i < winners.length; i += 2) {
+          const a = winners[i];
+          const b = winners[i + 1] ?? null;
+          next.push([a, b]);
+        }
+        round = next;
+      }
+
+      // Champion from final
+      const [ca, cb] = round[0];
+      let champ = ca as string;
+      if (cb) {
+        const pA = prob(ca as string, cb);
+        champ = Math.random() < pA ? (ca as string) : cb;
+      }
+      winCounts.set(champ, (winCounts.get(champ) || 0) + 1);
+    }
+
+    const mcRows = allKeys.map((k) => {
+      const p = players.find((x) => x.playerId === k)!;
+      const winProb = +(((winCounts.get(k) || 0) / runs) * 100).toFixed(1);
+      const finalProb = +(((finalCounts.get(k) || 0) / runs) * 100).toFixed(1);
+      return {
+        playerId: k,
+        username: p.username,
+        displayName: p.displayName,
+        winProb,
+        finalProb,
+      };
+    }).sort((a, b) => b.winProb - a.winProb);
+
+    const predictedWinnerMonteCarlo =
+      players.find((p) => p.playerId === (mcRows[0]?.playerId || "")) || null;
 
     return NextResponse.json({
       players,
       predictedWinner,
+      predictedWinnerMonteCarlo,
       topContenders,
       headToHeads,
       insights,
       meta: {
         matchesCount: matches.length,
         algorithm: detailed ? "Advanced ELO + Form Analysis" : "Simple Win Rate",
-        confidence
-      }
+        confidence,
+        simulationNote: "Monte Carlo uses single-elimination approximation with current metrics for pairwise odds",
+      },
+      monteCarlo: {
+        runs,
+        winProbabilities: mcRows,
+      },
     });
 
   } catch (err) {

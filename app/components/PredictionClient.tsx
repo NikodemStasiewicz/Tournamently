@@ -14,9 +14,22 @@ type PlayerStat = {
   winRate: number;
 };
 
+type MonteCarloRow = {
+  playerId: string;
+  username: string;
+  displayName: string;
+  winProb: number;   // probability of becoming champion (%)
+  finalProb: number; // probability of reaching final (%)
+};
+
 type ApiResponse = {
   players: PlayerStat[];
   predictedWinner: PlayerStat | null;
+  predictedWinnerMonteCarlo?: PlayerStat | null;
+  monteCarlo?: {
+    runs: number;
+    winProbabilities: MonteCarloRow[];
+  };
   meta?: { matchesCount?: number; message?: string };
 };
 
@@ -39,7 +52,7 @@ export default function PredictionClient({ tournaments }: { tournaments: Tournam
     setError(null);
     setData(null);
     try {
-      const res = await fetch(`/api/prediction?tournamentId=${encodeURIComponent(tournamentId)}`);
+      const res = await fetch(`/api/prediction?tournamentId=${encodeURIComponent(tournamentId)}&mcRuns=2000`);
       if (!res.ok) throw new Error("Failed to fetch prediction");
       const json: ApiResponse = await res.json();
       setData(json);
@@ -188,6 +201,54 @@ export default function PredictionClient({ tournaments }: { tournaments: Tournam
           ))}
         </div>
       </div>
+
+      {/* Monte Carlo - symulacje */}
+      {data?.monteCarlo && data.monteCarlo.winProbabilities?.length ? (
+        <div className="bg-slate-800/60 p-6 rounded-lg border border-gray-700">
+          <div className="flex items-center gap-3 mb-4">
+            <Zap className="w-5 h-5 text-amber-400" />
+            <h3 className="text-xl font-bold text-white">Symulacja Monte Carlo</h3>
+            <span className="ml-auto text-xs text-gray-400">
+              Próby: {data.monteCarlo.runs}
+            </span>
+          </div>
+
+          {data.predictedWinnerMonteCarlo ? (
+            <div className="flex items-center gap-4 p-3 mb-4 rounded bg-amber-900/20 border border-amber-700/30">
+              <Target className="w-5 h-5 text-amber-300" />
+              <div className="text-white">
+                <div className="font-semibold">Faworyt MC:</div>
+                <div className="text-sm text-amber-200">
+                  {data.predictedWinnerMonteCarlo.displayName} (@{data.predictedWinnerMonteCarlo.username})
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-3">
+            {data.monteCarlo.winProbabilities.slice(0, 8).map((row) => (
+              <div key={row.playerId}>
+                <div className="flex justify-between text-xs text-gray-300 mb-1">
+                  <span className="truncate">{row.displayName}</span>
+                  <span className="text-amber-300 font-semibold">{row.winProb}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-700 rounded">
+                  <div
+                    className="h-2 rounded bg-gradient-to-r from-amber-500 to-yellow-400"
+                    style={{ width: `${row.winProb}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-gray-500 mt-1">
+                  Szansa na finał: <span className="text-gray-300">{row.finalProb}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-[11px] text-gray-500 mt-4">
+            Monte Carlo: pojedyncza eliminacja przybliżona, prawdopodobieństwa par wyznaczone z bieżących metryk (win rate, forma, passa).
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 

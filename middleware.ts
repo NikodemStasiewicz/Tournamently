@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { getCurrentUser } from './app/lib/auth';
+import { prisma } from './app/lib/prisma';
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get('token')?.value;
@@ -25,6 +27,11 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  
+    
+
+
+
   return NextResponse.next();
 }
 
@@ -38,5 +45,6 @@ export const config = {
     '/tournaments/new',
     '/tournaments/:id/edit',
     '/tournaments',
+    
   ],
 };

@@ -4,6 +4,7 @@ import Bracket from "@/app/components/Bracket";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/app/lib/auth"; // funkcja do pobrania aktualnego usera
+import { Role } from "@prisma/client";
 
 interface Params {
   params: {
@@ -14,6 +15,17 @@ interface Params {
 export default async function TournamentPage({ params }: Params) {
   const user = await getCurrentUser();
 
+    const userId = user?.id;
+  let userRole: Role | null = null;
+  if (userId) {
+    // Pobierz rolę zalogowanego użytkownika, jeśli jest dostępny
+    const userWithRole = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    userRole = userWithRole?.role || null;
+  }
+  
   const tournament = await prisma.tournament.findUnique({
     where: { id: params.id },
     select: {
@@ -123,14 +135,14 @@ export default async function TournamentPage({ params }: Params) {
           </h1>
 
           {/* Tutaj warunkowy link edycji turnieju */}
-          {tournament.ownerId === user?.id && (
+          {tournament.ownerId  === user?.id || userRole === 'ADMIN' ?  (
             <Link
               href={`/tournaments/${tournament.id}/edit`}
               className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 inline-block mt-4"
             >
               Edytuj turniej
             </Link>
-          )}
+          ):null}
         </header>
 
         <section className="bg-gray-800 rounded-2xl shadow-lg p-6">
