@@ -298,58 +298,49 @@ export async function GET(request: Request) {
     }
 
     for (let r = 0; r < runs; r++) {
-      // Clone initial round
-      let round: Array<[string, string | null]> = pairings.map((p) => [p[0], p[1]]);
+  // Clone initial round
+  let round: Array<[string, string | null]> = pairings.map((p) => [p[0], p[1]]);
 
-      if (round.length === 1) {
-        const [fa, fb] = round[0];
-        if (fa) finalCounts.set(fa, (finalCounts.get(fa) || 0) + 1);
-        if (fb) finalCounts.set(fb, (finalCounts.get(fb) || 0) + 1);
-      }
+  while (round.length > 1) {
+    const winners: string[] = [];
 
-      while (round.length > 1) {
-        if (round.length === 2) {
-          // Track finalists (participants of the last two semis)
-          for (const [a, b] of round) {
-            if (a) finalCounts.set(a, (finalCounts.get(a) || 0) + 1);
-            if (b) finalCounts.set(b, (finalCounts.get(b) || 0) + 1);
-          }
-        }
+    for (const [a, b] of round) {
+      if (a && !b) { winners.push(a); continue; } // bye
+      if (!a && b) { winners.push(b); continue; }
+      if (!a || !b) continue;
 
-        const winners: string[] = [];
-        for (const [a, b] of round) {
-          if (a && !b) {
-            winners.push(a); // bye
-            continue;
-          }
-          if (!a && b) {
-            winners.push(b); // bye
-            continue;
-          }
-          if (!a || !b) continue;
-          const pA = prob(a, b);
-          const w = Math.random() < pA ? a : b;
-          winners.push(w);
-        }
-
-        const next: Array<[string, string | null]> = [];
-        for (let i = 0; i < winners.length; i += 2) {
-          const a = winners[i];
-          const b = winners[i + 1] ?? null;
-          next.push([a, b]);
-        }
-        round = next;
-      }
-
-      // Champion from final
-      const [ca, cb] = round[0];
-      let champ = ca as string;
-      if (cb) {
-        const pA = prob(ca as string, cb);
-        champ = Math.random() < pA ? (ca as string) : cb;
-      }
-      winCounts.set(champ, (winCounts.get(champ) || 0) + 1);
+      const pA = prob(a, b);
+      const w = Math.random() < pA ? a : b;
+      winners.push(w);
     }
+
+    // Jeśli to runda półfinałowa (pozostają tylko dwie pary), dodaj do finalCounts tylko zwycięzców
+    if (winners.length === 2) {
+      for (const w of winners) {
+        finalCounts.set(w, (finalCounts.get(w) || 0) + 1);
+      }
+    }
+
+    // Przygotuj następną rundę
+    const next: Array<[string, string | null]> = [];
+    for (let i = 0; i < winners.length; i += 2) {
+      const a = winners[i];
+      const b = winners[i + 1] ?? null;
+      next.push([a, b]);
+    }
+    round = next;
+  }
+
+  // Champion from final
+  const [ca, cb] = round[0];
+  let champ = ca as string;
+  if (cb) {
+    const pA = prob(ca as string, cb);
+    champ = Math.random() < pA ? (ca as string) : cb;
+  }
+  winCounts.set(champ, (winCounts.get(champ) || 0) + 1);
+}
+
 
     const mcRows = allKeys.map((k) => {
       const p = players.find((x) => x.playerId === k)!;

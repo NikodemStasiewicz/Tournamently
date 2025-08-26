@@ -122,6 +122,8 @@ export default async function TournamentPage({ params }: Params) {
       winnerId: computedWinnerId,
       nextMatchId: match.nextMatchId ?? null,
       nextMatchPlayerSlot: (match.nextMatchPlayerSlot ?? null) as 1 | 2 | null,
+      nextLoserMatchId: match.nextLoserMatchId ?? null,
+      nextLoserMatchPlayerSlot: (match.nextLoserMatchPlayerSlot ?? null) as 1 | 2 | null,
       bracket: match.bracket as "winners" | "losers" | "grandFinal",
     };
   });

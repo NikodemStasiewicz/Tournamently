@@ -25,5 +25,8 @@ export interface BracketMatch {
   winnerId: string | null;
   nextMatchId: string | null;
   nextMatchPlayerSlot: 1 | 2 | null;
-  bracket: "winners" | "losers" | "grandFinal"; //dodałem final
+  // For double-elim loser routing (optional to maintain compatibility)
+  nextLoserMatchId?: string | null;
+  nextLoserMatchPlayerSlot?: 1 | 2 | null;
+  bracket: "winners" | "losers" | "grandFinal";
 }
