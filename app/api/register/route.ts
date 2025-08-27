@@ -62,5 +62,5 @@ export async function POST(req: Request) {
   } catch (err) {
     return NextResponse.json({ error: 'Nieprawidłowe dane wejściowe' }, { status: 400 });
   }
-  
 }
+
