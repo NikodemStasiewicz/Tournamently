@@ -20,7 +20,6 @@ A modern platform for creating and managing tournaments (solo or team-based) wit
   - [Chat](#chat)
 - [API Overview](#api-overview)
 - [Production Notes](#production-notes)
-- [Seeding](#seeding)
 - [License](#license)
 
 ---
@@ -231,31 +230,7 @@ Admin (Admin-only)
 
 > Note: some ancillary endpoints may exist for internal flows; the above are the primary ones.
 
----
 
-## Seeding
-
-Two convenient ways:
-
-1) Prisma (recommended)
-```
-npx prisma generate
-npx prisma db seed
-```
-This creates:
-- Admin: admin@example.com / Admin123!
-- Player: player1@example.com / User123!
-- Demo team and a sample tournament
-
-2) Manual script
-If you prefer calling the script directly:
-```
-npm run prisma:seed
-```
-
-Note: The seed is idempotent (upsert), it won’t duplicate entries on multiple runs.
-
----
 
 ## Production Notes
 
